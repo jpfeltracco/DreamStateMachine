@@ -2,11 +2,105 @@
 <Animations>
   <Animation
     name="punch"
-    class="straight_attack"
-    damage="10"
+    attackType="single_box_attack"
+    frames="5"
+    fps="12"
+    columnIndex="0"
+    rowIndex="1">
+    <AttackFrame
+    frame="3"
+    damage="10">
+      <AttackBox viewOffsetX="0"
+      viewOffsetY="30"
+      attackWidth="30"
+      attackHeight="30">
+      </AttackBox>
+    </AttackFrame>
+  </Animation>
+  
+  <Animation
+    name="over_head_smash"
+    attackType="single_box_attack"
+    frames="8"
+    fps="12"
+    columnIndex="0"
+    rowIndex="1">
+    <AttackFrame
+    frame="5"
+    damage="10">
+      <AttackBox viewOffsetX="0"
+      viewOffsetY="40"
+      attackWidth="20"
+      attackHeight="20">
+      </AttackBox>
+    </AttackFrame>
+  </Animation>
+
+  <Animation
+    name="walk"
     frames="10"
     fps="12"
     columnIndex="0"
     rowIndex="0">
   </Animation>
+
+  <WeaponAnimation
+    name="player_holding_weapon_walk"
+    type="holding_weapon_walk"
+    frames="10"
+    fps="12"
+    columnIndex="0"
+    rowIndex="3">
+    <GripFrame
+      frame="0"
+      gripX="47"
+      gripY="37">
+    </GripFrame>
+    <GripFrame
+      frame="1"
+      gripX="47"
+      gripY="38">
+    </GripFrame>
+    <GripFrame
+      frame="2"
+      gripX="46"
+      gripY="39">
+    </GripFrame>
+    <GripFrame
+      frame="3"
+      gripX="45"
+      gripY="40">
+    </GripFrame>
+    <GripFrame
+      frame="4"
+      gripX="46"
+      gripY="39">
+    </GripFrame>
+    <GripFrame
+      frame="5"
+      gripX="47"
+      gripY="37">
+    </GripFrame>
+    <GripFrame
+      frame="6"
+      gripX="47"
+      gripY="37">
+    </GripFrame>
+    <GripFrame
+      frame="7"
+      gripX="48"
+      gripY="35">
+    </GripFrame>
+    <GripFrame
+      frame="8"
+      gripX="47"
+      gripY="34">
+    </GripFrame>
+    <GripFrame
+      frame="9"
+      gripX="35"
+      gripY="47">
+    </GripFrame>
+  </WeaponAnimation>
+  
 </Animations>

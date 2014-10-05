@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Windows.Forms;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
@@ -25,7 +26,10 @@ namespace DreamStateMachine
         ActorController actorController;
         ActorManager actorManager;
         AIController aiController;
+        ItemManager itemManager;
         PhysicsController physicsController;
+        SoundManager soundManager;
+        WorldManager worldManager;
 
         Actor player;
         GraphicsDeviceManager graphics;
@@ -36,11 +40,10 @@ namespace DreamStateMachine
         Camera cam;
         SpriteBatch spriteBatch;
         SpriteFont arielBlackFont;
-        SoundManager soundManager;
         Texture2D debugSquare;
         Texture2D floorTiles;
         Texture2D playerTexture;
-        WorldManager worldManager;
+        
         InputHandler inputHandler;
 
         bool isLoadingWorld;
@@ -76,6 +79,7 @@ namespace DreamStateMachine
         {
             base.Initialize();
             Window.Title = "Dream State Machine";
+            Window.IsBorderless = false;
             this.IsMouseVisible = true;
         }
 
@@ -98,21 +102,22 @@ namespace DreamStateMachine
             origin.Y = graphics.PreferredBackBufferHeight / 2;
             inputHandler = new InputHandler(origin);
             random = new Random();
-
             tileRect = new Rectangle(0, 0, graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight);
             cam = new Camera(spriteBatch, tileRect, debugSquare, healthBar);
-            //actors = new List<Actor>();
+
             aiController = new AIController();
-            actorController = new ActorController();
             physicsController = new PhysicsController();
             worldManager = new WorldManager(random);
-            worldManager.initWorldConfig(Content, "content/Worlds.xml");
+            worldManager.initWorldConfig(Content, "Content/Worlds.xml");
             worldManager.initStartingWorld();
-            soundManager = new SoundManager();
-            soundManager.initSoundConfig(Content, "content/sfx/Sounds.xml");
+            SoundManager.Instance.initSoundConfig(Content, "Content/sfx/Sounds.xml");
+            actorController = new ActorController();
             actorManager = new ActorManager();
-            actorManager.initActorConfig(Content, "content/Actors.xml");
+            actorManager.initAnimationConfig(Content, "Content/Animations.xml");
+            actorManager.initActorConfig(Content, "Content/Actors.xml");
             actorManager.spawnActors(worldManager.curWorld.getSpawns());
+            itemManager = new ItemManager();
+            itemManager.initWeaponConfig(Content, "Content/Weapons.xml");
         }
 
         /// <summary>
@@ -144,7 +149,7 @@ namespace DreamStateMachine
             aiController.update(dt);
             physicsController.update(dt);
             cam.update();
-
+           
             base.Update(gameTime);
         }
 
@@ -165,6 +170,7 @@ namespace DreamStateMachine
 
         private void UpdateInput()
         {
+            
             if (player != null)
             {
                 List<Command> commands = inputHandler.handleInput();
@@ -187,7 +193,7 @@ namespace DreamStateMachine
 
             GraphicsDevice.Clear(Color.Black);
 
-            spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, SamplerState.AnisotropicClamp, DepthStencilState.Default, RasterizerState.CullNone);
+            spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.NonPremultiplied, SamplerState.AnisotropicClamp, DepthStencilState.Default, RasterizerState.CullNone);
                 cam.drawFloor();
                 cam.drawActors();
                 cam.drawGUI();
