@@ -119,9 +119,21 @@ namespace DreamStateMachine
                 0
             );
 
+            if (activeWeapon != null)
+            {
+                activeWeapon.draw(spriteBatch, drawSpace, debugTex, debugging);
+            }
+
             if (debugging)
             {
-                spriteBatch.Draw(
+                debugDraw(spriteBatch, drawSpace, debugTex, normalizedPosition, debugSquares);
+                debugSquares.Clear();
+            }
+        }
+
+        public void debugDraw(SpriteBatch spriteBatch, Rectangle drawSpace, Texture2D debugTex, Rectangle normalizedPosition, List<Rectangle> debugSquares)
+        {
+            spriteBatch.Draw(
                     debugTex,
                     new Vector2(this.hitBox.X - drawSpace.X + normalizedPosition.Width / 2.0f, this.hitBox.Y - drawSpace.Y + normalizedPosition.Height / 2.0f),
                     new Rectangle(0, 0, this.hitBox.Width, this.hitBox.Height),
@@ -133,28 +145,19 @@ namespace DreamStateMachine
                     0
                 );
 
-                foreach (Rectangle debugSquare in debugSquares)
-                {
-                    spriteBatch.Draw(
-                    debugTex,
-                    new Vector2(debugSquare.X - drawSpace.X + normalizedPosition.Width / 2.0f, debugSquare.Y - drawSpace.Y + normalizedPosition.Height / 2.0f),
-                    new Rectangle(0, 0, debugSquare.Width, debugSquare.Height),
-                    new Color(.5f, .5f, .5f, .5f),
-                    0,
-                    new Vector2(normalizedPosition.Width / 2.0f, normalizedPosition.Height / 2.0f),
-                    1,
-                    SpriteEffects.None,
-                    0
-                    );
-
-                }
-
-                if (activeWeapon != null)
-                {
-                    activeWeapon.draw(spriteBatch, drawSpace, debugTex, debugging);
-                }
-
-                debugSquares.Clear();
+            foreach (Rectangle debugSquare in debugSquares)
+            {
+                spriteBatch.Draw(
+                debugTex,
+                new Vector2(debugSquare.X - drawSpace.X + normalizedPosition.Width / 2.0f, debugSquare.Y - drawSpace.Y + normalizedPosition.Height / 2.0f),
+                new Rectangle(0, 0, debugSquare.Width, debugSquare.Height),
+                new Color(.5f, .5f, .5f, .5f),
+                0,
+                new Vector2(normalizedPosition.Width / 2.0f, normalizedPosition.Height / 2.0f),
+                1,
+                SpriteEffects.None,
+                0
+                );
 
             }
         }
@@ -188,6 +191,12 @@ namespace DreamStateMachine
         public void giveWeapon(Weapon weapon)
         {
             activeWeapon = weapon;
+        }
+
+        public void kill()
+        {
+            this.health = -1;
+            Death(this, EventArgs.Empty);
         }
 
         public void unlockMovement()
@@ -268,7 +277,6 @@ namespace DreamStateMachine
 
         public void setPos(int x, int y)
         {
-            //posOffset = new Point();
             posOffset.X = x - hitBox.X;
             posOffset.Y = y - hitBox.Y;
             hitBox.X += posOffset.X;
@@ -323,8 +331,10 @@ namespace DreamStateMachine
                     {
                         this.onKill(damageInfo);
                     }
+                    return;
                 }
             }
+            
         }
 
         virtual public void update(float dt)
@@ -360,8 +370,10 @@ namespace DreamStateMachine
                     this.activeWeapon.calcWeaponPos(this);
                 }
             }
-            
-            //animationList.update(dt);
+        }
+
+        public void remove(){
+            Actor.DamagedPoint -= new EventHandler<AttackEventArgs>(Actor_Attacked);
         }
     }
 }

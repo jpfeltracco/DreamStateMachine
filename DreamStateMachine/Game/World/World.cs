@@ -17,6 +17,7 @@ namespace DreamStateMachine
         Point bottomLeftTilePos;
         Point spawnTile;
         Point bottomRightTilePos;
+        public String themeMusic;
         Texture2D floorTiles;
         int[,] tileMap;
         bool[,] collisionMap;
@@ -31,31 +32,93 @@ namespace DreamStateMachine
 
         public void draw(SpriteBatch spriteBatch, Rectangle drawSpace, Texture2D debugTex, bool debuging = false)
         {
-            Texture2D floorTileTex = this.getFloorTileTex();
-            int[,] tileMap = this.getTileMap();
-            int tileSize = this.getTileSize();
-            Rectangle screenRectangle;
-            Rectangle sourceRectangle;
-
-            for (int i = 0; i <= drawSpace.Height / tileSize + 1; i++)
+            Texture2D floorTileTex = this.floorTiles;
+            int[,] tileMap = this.tileMap;
+            int tileSize = this.tileSize;
+            Rectangle screenRectangle = new Rectangle(0, 0, 0, 0);
+            Rectangle sourceRectangle = new Rectangle(0, 0, 0, 0);
+            Point offset = new Point();
+            Point tileWorldPos = new Point();
+            Vector2 tilePos = new Vector2((float)drawSpace.X / tileSize, (float)drawSpace.Y / tileSize);
+            offset.X = (int)((tilePos.X - (int)tilePos.X) * tileSize);
+            offset.Y = (int)((tilePos.Y - (int)tilePos.Y) * tileSize);
+            //if (drawSpace.X < 0)
+            //{
+            //    offset.X = -(drawSpace.X % tileSize);
+            //}
+            //else
+            //{
+            //    offset.X = -(drawSpace.X % tileSize);
+            //}
+            //offset.X = -(drawSpace.X % tileSize);
+            //offset.Y = -(drawSpace.Y % tileSize);
+            Color tileColor = Color.White;
+            for (int i = -1; i <= drawSpace.Height / tileSize + 1; i++)
             {
-                for (int k = 0; k <= drawSpace.Width / tileSize + 1; k++)
+                for (int k = -1; k <= drawSpace.Width / tileSize + 1; k++)
                 {
-                    screenRectangle = new Rectangle((int)(k * tileSize - drawSpace.X % tileSize), (int)(i * tileSize - drawSpace.Y % tileSize), (int)(tileSize), (int)(tileSize));
+                    
+                    //screenRectangle.X = k * tileSize - (int)((tilePos.X - (int)tilePos.X) * tileSize);
+                    //screenRectangle.X = i * tileSize - (int)((tilePos.Y - (int)tilePos.Y) * tileSize);
+                    //screenRectangle.Y = i * tileSize + offset.Y;
+                    //screenRectangle.Width = tileSize;
+                    //screenRectangle.Height = tileSize;
+                    //sourceRectangle.X = 0;
+                    //sourceRectangle.Y = 0;
+                    //sourceRectangle.Width = tileSize;
+                    //sourceRectangle.Height = tileSize;
+                    //tileWorldPos.X =  k * tileSize + tile
 
-                    //if (i + (drawSpace.Y / tileSize) >= 0 && k + (drawSpace.X / tileSize) >= 0 && i + (drawSpace.Y / tileSize) < tileMap.GetLength(1) && k + (drawSpace.X / tileSize) < tileMap.GetLength(0))
-                    if (isTileDrawable(drawSpace.X + k * tileSize, drawSpace.Y + i * tileSize))
+                    tileWorldPos.X = k * tileSize + drawSpace.X;
+                    tileWorldPos.Y = i * tileSize + drawSpace.Y;
+                    if (tileWorldPos.X < 0 || tileWorldPos.Y < 0)
                     {
-                        sourceRectangle = new Rectangle(tileMap[i + drawSpace.Y / tileSize, k + drawSpace.X / tileSize] * tileSize,
-                                                        0,
-                                                        tileSize,
-                                                        tileSize);
+                        //if (tileWorldPos.X < 0)
+                        //{
+                        //    offset.X = drawSpace.X % tileSize;
+                        //    if (offset.X != 0)
+                        //        offset.X = -(offset.X + tileSize);
+                        //}
+                        //else
+                        //{
+                        //    offset.X = -(drawSpace.X % tileSize);
+                        //}
+                        //offset.Y = drawSpace.Y % tileSize;
+                        //if (offset.Y != 0)
+                        //    offset.Y = -(offset.Y + tileSize);
+                        screenRectangle.X = k * tileSize  - offset.X;
+                        screenRectangle.Y = i * tileSize  - offset.Y;
+                        screenRectangle.Width = tileSize;
+                        screenRectangle.Height = tileSize;
+                        sourceRectangle.X = 0;
+                        sourceRectangle.Y = 0;
+                        sourceRectangle.Width = tileSize;
+                        sourceRectangle.Height = tileSize;
+                        tileColor = Color.White;
                     }
-                    else 
+                    else if (tileWorldPos.X >= 0 && tileWorldPos.Y >= 0)
                     {
-                        sourceRectangle = new Rectangle(0, 0, tileSize, tileSize);
+                        //offset.X = -(drawSpace.X % tileSize);
+                        //offset.Y = -(drawSpace.Y % tileSize);
+                        screenRectangle.X = k * tileSize - offset.X;
+                        screenRectangle.Y = i * tileSize - offset.Y;
+                        screenRectangle.Width = tileSize;
+                        screenRectangle.Height = tileSize;
+                        if (k + drawSpace.X / tileSize < tileMap.GetLength(1) && i + drawSpace.Y / tileSize < tileMap.GetLength(0) && tileMap[i + drawSpace.Y / tileSize, k + drawSpace.X / tileSize] != -1)
+                        {
+                            sourceRectangle.X = tileMap[i + drawSpace.Y / tileSize, k + drawSpace.X / tileSize] * tileSize;
+                            tileColor = Color.White;
+                        }
+                        else if (k + drawSpace.X / tileSize < tileMap.GetLength(1) && i + drawSpace.Y / tileSize < tileMap.GetLength(0) && tileMap[i + drawSpace.Y / tileSize, k + drawSpace.X / tileSize] == -1)
+                        {
+                            sourceRectangle.X = 0;
+                            tileColor = Color.White;
+                        }
+                        sourceRectangle.Y = 0;
+                        sourceRectangle.Width = tileSize;
+                        sourceRectangle.Height = tileSize;
                     }
-                    spriteBatch.Draw(floorTileTex, screenRectangle, sourceRectangle, Color.White);
+                    spriteBatch.Draw(floorTileTex, screenRectangle, sourceRectangle, tileColor);
                 }
             }
         }
@@ -90,7 +153,7 @@ namespace DreamStateMachine
                     //   tileMap[curNode.point.Y - 1, curNode.point.X] == 5)
                     if(this.tileIsInBounds(curNode.point.X - 1, curNode.point.Y - 1) &&
                         this.tileIsInBounds(curNode.point.X - 1, curNode.point.Y) &&
-                        this.tileIsInBounds(curNode.point.X - 1, curNode.point.Y))
+                        this.tileIsInBounds(curNode.point.X, curNode.point.Y - 1))
                     {
                         Point openPoint = new Point(curNode.point.X - 1, curNode.point.Y - 1);
                         PathNode openPathNode = new PathNode(curNode, openPoint, target, curNode.movementCost + 14);
@@ -256,6 +319,11 @@ namespace DreamStateMachine
         {
             //int topLeftTilePosX = (int)(box.x / tileSize);
             //int topLeftTilePosY = (int)(box.y / tileSize);
+            if (x < 0)
+            {
+                x -= tileSize;
+                y -= tileSize;
+            }
             x /= tileSize;
             y /= tileSize;
 
@@ -263,7 +331,7 @@ namespace DreamStateMachine
                 y >= 0 &&
                 x < tileMap.GetLength(1) &&
                 y < tileMap.GetLength(0) &&
-                tileMap[y, x] != 0)
+                tileMap[y, x] != -1)
                 return true;
             else
                 return false;
@@ -305,28 +373,6 @@ namespace DreamStateMachine
         public int[,] getTileMap()
         {
             return tileMap;
-        }
-
-        public Texture2D getFloorTileTex()
-        {
-            return this.floorTiles;
-        }
-
-        public int getTileSize()
-        {
-            return tileSize;
-        }
-
-        public Point getSpawnPos()
-        {
-            Point spawnTile = this.getSpawnTile();
-            Point spawnPos = new Point(spawnTile.X * tileSize + tileSize / 2, spawnTile.Y * tileSize + tileSize / 2);
-            return spawnPos;
-        }
-
-        public Point getSpawnTile()
-        {
-            return spawnTile;
         }
 
         public List<SpawnFlag> getSpawns()
@@ -378,18 +424,6 @@ namespace DreamStateMachine
         public void setSpawns(List<SpawnFlag> s)
         {
             spawns = s;
-        }
-
-        public void useTileAtPoint(Point point)
-        {
-            Point tilePos = new Point(point.X / this.tileSize, point.Y / this.tileSize);
-            Console.WriteLine("Tile being used" + tileMap[tilePos.Y, tilePos.X]);
-        }
-
-        public void useTileAtPoint(int x, int y)
-        {
-            Point tilePos = new Point(x / this.tileSize, y / this.tileSize);
-            Console.WriteLine("Tile being used" + tileMap[tilePos.Y, tilePos.X]);
         }
 
         public TraceInfo traceWorld(Point origin, Point destination)

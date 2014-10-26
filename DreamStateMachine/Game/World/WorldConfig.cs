@@ -12,15 +12,18 @@ namespace DreamStateMachine
     class WorldConfig
     {
         public String worldName;
+        public List<String> enemyClasses;
         public Texture2D texture;
         public int width;
         public int height;
         public int tileSize;
+        public String music;
 
         //Constructor
-        public WorldConfig(String worldName, Texture2D worldTexture, int worldWidth, int worldHeight, int tileSize)
+        public WorldConfig(String worldName, List<String> enemyClasses, Texture2D worldTexture, int worldWidth, int worldHeight, int tileSize)
         {
             this.worldName = worldName;
+            this.enemyClasses = enemyClasses;
             this.texture = worldTexture;
             this.width = worldWidth;
             this.height = worldHeight;

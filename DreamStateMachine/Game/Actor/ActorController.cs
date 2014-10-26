@@ -44,13 +44,13 @@ namespace DreamStateMachine.Behaviors
 
         private void Actor_Death(Object sender, EventArgs e)
         {
-            SoundManager.Instance.playSound(1);
+            SoundManager.Instance.playSound("death");
             actors.Remove((Actor)sender);
         }
 
         private void Actor_Hurt(Object sender, EventArgs e)
         {
-            SoundManager.Instance.playSound(3);
+            SoundManager.Instance.playSound("hurt1");
             Actor hurtActor = (Actor)sender;
             Recoil recoil = new Recoil(actionLists[hurtActor], hurtActor);
             if (!actionLists[hurtActor].has(recoil))
@@ -97,9 +97,12 @@ namespace DreamStateMachine.Behaviors
         {
             WorldManager worldManager = (WorldManager) sender;
             World curWorld = worldManager.curWorld;
+            foreach (Actor actor in actors)
+            {
+                actor.remove();
+            }
             actors.Clear();
             actionLists.Clear();
         }
-
     }
 }

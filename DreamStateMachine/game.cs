@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Windows.Forms;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
@@ -15,6 +14,7 @@ using System.Xml;
 using System.Threading;
 using DreamStateMachine;
 using DreamStateMachine.Input;
+using System.Windows.Forms;
 
 namespace DreamStateMachine
 {
@@ -28,7 +28,6 @@ namespace DreamStateMachine
         AIController aiController;
         ItemManager itemManager;
         PhysicsController physicsController;
-        SoundManager soundManager;
         WorldManager worldManager;
 
         Actor player;
@@ -41,32 +40,48 @@ namespace DreamStateMachine
         SpriteBatch spriteBatch;
         SpriteFont arielBlackFont;
         Texture2D debugSquare;
-        Texture2D floorTiles;
-        Texture2D playerTexture;
+        Texture2D healthBar;
+        Texture2D whiteSquare;
+        Texture2D splashScreen;
         
         InputHandler inputHandler;
 
         bool isLoadingWorld;
-        bool usingGamePad = false;
+        //bool usingGamePad = false;
+
+        
+
 
         public delegate void GameUpdate(GameTime gameTime);
         public delegate void GameDraw(GameTime gameTime);
-
+        public Stack<GameDraw> gameDrawStack;
+        public Stack<GameUpdate> gameUpdateStack;
         GameUpdate gameUpdate;
         GameDraw gameDraw;
 
         public Game1()
         {
             graphics = new GraphicsDeviceManager(this);
-            graphics.PreferredBackBufferWidth = 800;
-            graphics.PreferredBackBufferHeight = 800;
-            graphics.IsFullScreen = false;
-            graphics.ApplyChanges();
-            Content.RootDirectory = "Content";
-            gameUpdate = MainGameUpdate;
-            gameDraw = MainGameDraw;
+            var screen = Screen.AllScreens.First(e => e.Primary);
+            Window.IsBorderless = true;
+            Window.Position = new Point(screen.Bounds.X, screen.Bounds.Y);
+            graphics.PreferredBackBufferWidth = screen.Bounds.Width;
+            graphics.PreferredBackBufferHeight = screen.Bounds.Height;
+            graphics.IsFullScreen = true;
+            //graphics.ToggleFullScreen();
+            //graphics.ApplyChanges();
 
+            Content.RootDirectory = "Content";
+            gameDrawStack = new Stack<GameDraw>();
+            gameUpdateStack = new Stack<GameUpdate>();
+            gameDrawStack.Push(StartMenuUpdate);
+            gameUpdateStack.Push(StartMenuDraw);
+            //gameDrawStack.Enqueue(MainGameUpdate);
+            //gameUpdateStack.Enqueue(MainGameDraw);
+            gameUpdate = gameUpdateStack.Peek();
+            gameDraw = gameDrawStack.Peek();
             Actor.Spawn += new EventHandler<SpawnEventArgs>(Actor_Spawn);
+            Actor.Use += new EventHandler<EventArgs>(Actor_Use);
         }
 
         /// <summary>
@@ -79,7 +94,9 @@ namespace DreamStateMachine
         {
             base.Initialize();
             Window.Title = "Dream State Machine";
-            Window.IsBorderless = false;
+            //Window.IsBorderless = true;
+            //graphics.IsFullScreen = true;
+            //graphics.ApplyChanges();
             this.IsMouseVisible = true;
         }
 
@@ -89,12 +106,9 @@ namespace DreamStateMachine
         /// </summary>
         protected override void LoadContent()
         {
-            floorTiles = Content.Load<Texture2D>("TempleFloor.png");
-            //playerTexture = Content.Load<Texture2D>("protagonistBodyAnimations");
-            playerTexture = Content.Load<Texture2D>("dreamManAnimations.png");
-            debugSquare = Content.Load<Texture2D>("debugSquare");
-            Texture2D healthBar = Content.Load<Texture2D>("debugSquare");
-            arielBlackFont = Content.Load<SpriteFont>("SpriteFont1");
+            
+            //arielBlackFont = Content.Load<SpriteFont>("SpriteFont1");
+            //splashScreen;
 
             device = graphics.GraphicsDevice;
             spriteBatch = new SpriteBatch(GraphicsDevice);
@@ -103,21 +117,27 @@ namespace DreamStateMachine
             inputHandler = new InputHandler(origin);
             random = new Random();
             tileRect = new Rectangle(0, 0, graphics.PreferredBackBufferWidth, graphics.PreferredBackBufferHeight);
-            cam = new Camera(spriteBatch, tileRect, debugSquare, healthBar);
+            //tileRect = Window.ClientBounds;
+            cam = new Camera(spriteBatch, tileRect);
+            cam.loadGuiTextures(Content);
 
             aiController = new AIController();
             physicsController = new PhysicsController();
             worldManager = new WorldManager(random);
             worldManager.initWorldConfig(Content, "Content/Worlds.xml");
-            worldManager.initStartingWorld();
-            SoundManager.Instance.initSoundConfig(Content, "Content/sfx/Sounds.xml");
+
+            SoundManager.Instance.initSoundConfig(Content, "Content/Sounds.xml", "Content/Music.xml");
             actorController = new ActorController();
             actorManager = new ActorManager();
             actorManager.initAnimationConfig(Content, "Content/Animations.xml");
             actorManager.initActorConfig(Content, "Content/Actors.xml");
-            actorManager.spawnActors(worldManager.curWorld.getSpawns());
+            
             itemManager = new ItemManager();
             itemManager.initWeaponConfig(Content, "Content/Weapons.xml");
+
+            cam.enterStartMenu();
+            cam.NewGame += new EventHandler<EventArgs>(NewGameSelected);
+
         }
 
         /// <summary>
@@ -141,6 +161,21 @@ namespace DreamStateMachine
             base.Update(gameTime);
         }
 
+        /// <summary>
+        /// This is called when the game should draw itself.
+        /// </summary>
+        /// <param name="gameTime">Provides a snapshot of timing values.</param>
+        protected override void Draw(GameTime gameTime)
+        {
+            gameDraw(gameTime);
+        }
+
+        public void startNewGame()
+        {
+            worldManager.initStartingWorld();
+            SoundManager.Instance.playSong("templeTheme");
+        }
+
         public void MainGameUpdate(GameTime gameTime)
         {
             float dt = (gameTime.ElapsedGameTime.Seconds) + (gameTime.ElapsedGameTime.Milliseconds / 1000f);
@@ -148,7 +183,8 @@ namespace DreamStateMachine
             actorController.update(dt);
             aiController.update(dt);
             physicsController.update(dt);
-            cam.update();
+            SoundManager.Instance.update(dt);
+            cam.gameUpdate(dt);
            
             base.Update(gameTime);
         }
@@ -164,8 +200,18 @@ namespace DreamStateMachine
 
                 base.Update(gameTime);
             }
-            gameUpdate = MainGameUpdate;
-            gameDraw = MainGameDraw;
+            gameUpdateStack.Pop();
+            gameDrawStack.Pop();
+
+            //gameUpdate = MainGameUpdate;
+            //gameDraw = MainGameDraw;
+        }
+
+        public void StartMenuUpdate(GameTime gameTime)
+        {
+            float dt = (gameTime.ElapsedGameTime.Seconds) + (gameTime.ElapsedGameTime.Milliseconds / 1000f);
+            cam.startMenuUpdate(dt);
+            UpdateInput();
         }
 
         private void UpdateInput()
@@ -175,25 +221,38 @@ namespace DreamStateMachine
             {
                 List<Command> commands = inputHandler.handleInput();
                 foreach (Command c in commands)
-                    c.Execute(player);
+                {
+                    if (player != null)
+                        c.Execute(player);
+                }
+            }
+            else if (cam.menuEnabled && cam.rootGUIElement != null && inputHandler.controller)
+            {
+                List<Command> commands = inputHandler.handleInput();
+                foreach (Command c in commands)
+                    c.Execute(cam.rootGUIElement);
+            }
+            else if(cam.menuEnabled && cam.rootGUIElement != null)
+            {
+                cam.handleGuiControls();
             }
         }
 
-        /// <summary>
-        /// This is called when the game should draw itself.
-        /// </summary>
-        /// <param name="gameTime">Provides a snapshot of timing values.</param>
-        protected override void Draw(GameTime gameTime)
+        public void StartMenuDraw(GameTime gameTime)
         {
-            gameDraw(gameTime);
+            GraphicsDevice.Clear(Color.CornflowerBlue);
+
+            spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.NonPremultiplied, SamplerState.AnisotropicClamp, DepthStencilState.Default, RasterizerState.CullNone);
+                cam.drawGUI();
+            spriteBatch.End();
         }
 
         public void MainGameDraw(GameTime gameTime)
         {
 
-            GraphicsDevice.Clear(Color.Black);
+            GraphicsDevice.Clear(Color.CornflowerBlue);
 
-            spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.NonPremultiplied, SamplerState.AnisotropicClamp, DepthStencilState.Default, RasterizerState.CullNone);
+            spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.NonPremultiplied, SamplerState.AnisotropicClamp, DepthStencilState.Default, RasterizerState.CullCounterClockwise);
                 cam.drawFloor();
                 cam.drawActors();
                 cam.drawGUI();
@@ -229,11 +288,41 @@ namespace DreamStateMachine
 
         }
 
-        private void Actor_Spawn(object sender, EventArgs eventArgs)
+        public void NewGameSelected(Object sender, EventArgs eventArgs)
+        {
+            //Console.Write("new game selected");
+            cam.menuEnabled = false;
+            startNewGame();
+
+            gameUpdateStack.Push(MainGameUpdate);
+            gameDrawStack.Push(MainGameDraw);
+            gameUpdate = gameUpdateStack.Peek();
+            gameDraw = gameDrawStack.Peek();
+        }
+
+        private void Actor_Spawn(Object sender, EventArgs eventArgs)
         {
             Actor actor = (Actor)sender;
             if (actor.className == "player")
                 player = actor;
+        }
+
+        private void Actor_Use(Object sender, EventArgs eventArgs)
+        {
+            Actor deadActor = (Actor)sender;
+            if (deadActor.className == "player" && deadActor.health <= 0 && gameUpdateStack.Count > 1)
+            {
+                player = null;
+                
+                cam.enterStartMenu();
+                cam.drawSpace.X = 0;
+                cam.drawSpace.Y = 0;
+                worldManager.restart();
+                gameUpdateStack.Pop();
+                gameDrawStack.Pop();
+                gameUpdate = gameUpdateStack.Peek();
+                gameDraw = gameDrawStack.Peek();
+            }
         }
     }
 }

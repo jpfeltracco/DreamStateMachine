@@ -17,6 +17,7 @@ namespace DreamStateMachine
         public Node<World> curWorldNode;
         public World curWorld;
         public int curLevel;
+        public Actor playerTransfer;
 
         private Dictionary<String, WorldConfig> worldPrototypes;
         private Random random;
@@ -44,37 +45,44 @@ namespace DreamStateMachine
 
         private void Actor_Use(object sender, EventArgs e)
         {
-            
+           
             Actor usingActor = (Actor)sender;
-            int reach = usingActor.reach;
-            Vector2 sightVector = usingActor.sightVector;
-            Point usePoint = new Point();
-            usePoint.X = (int)((usingActor.hitBox.Center.X + (int)(sightVector.X * reach))  / this.curWorld.tileSize);
-            usePoint.Y = (int)((usingActor.hitBox.Center.Y + (int)(sightVector.Y * reach)) / this.curWorld.tileSize);
-            int[,] tileMap = this.curWorld.getTileMap();
-            if (tileMap[usePoint.Y, usePoint.X] == 15)
+            if (usingActor.health > 0)
             {
-                //worldManager.curWorld.useTileAtPoint(usePoint);
-                //Console.Write(worldManager.curLevel);
-                if (this.getWorldChild(0) == null)
+                int reach = usingActor.reach;
+                Vector2 sightVector = usingActor.sightVector;
+                Point usePoint = new Point();
+                usePoint.X = (int)((usingActor.hitBox.Center.X + (int)(sightVector.X * reach)) / this.curWorld.tileSize);
+                usePoint.Y = (int)((usingActor.hitBox.Center.Y + (int)(sightVector.Y * reach)) / this.curWorld.tileSize);
+                int[,] tileMap = this.curWorld.getTileMap();
+                if (tileMap[usePoint.Y, usePoint.X] == 15)
                 {
-                    this.createNextWorld(0);
-                    onWorldChange();
-                    
-                    //this.spawnActor(protagonist, worldManager.curWorld.getSpawnPos(), 1);
-                    //this.spawnActors(worldManager.curWorld.getSpawns());
+                    //worldManager.curWorld.useTileAtPoint(usePoint);
+                    //Console.Write(worldManager.curLevel);
+                    if (this.getWorldChild(0) == null)
+                    {
+                        playerTransfer = usingActor;
+                        this.createNextWorld(0);
+                        onWorldChange();
+                        playerTransfer = null;
+
+                        //this.spawnActor(protagonist, worldManager.curWorld.getSpawnPos(), 1);
+                        //this.spawnActors(worldManager.curWorld.getSpawns());
+                    }
+                    //isLoadingWorld = false;
+                    //Console.Write(worldManager.curLevel);
                 }
-                //isLoadingWorld = false;
-                //Console.Write(worldManager.curLevel);
             }
         }
 
         public void initWorldConfig(ContentManager content, String actorConfigFile)
         {
-            var doc = XDocument.Load(actorConfigFile);
-            var worlds = doc.Element("Worlds").Elements("World");
+            XDocument doc = XDocument.Load(actorConfigFile);
+            List<XElement> worlds = doc.Element("Worlds").Elements("World").ToList();
+            List<XElement> enemies;
 
             String worldName;
+            List<String> enemyClasses;
             Texture2D texture;
             int width;
             int height;
@@ -83,18 +91,26 @@ namespace DreamStateMachine
             foreach (XElement world in worlds)
             {
                 worldName = world.Attribute("worldName").Value;
+                enemies = world.Elements("Enemy").ToList();
                 texture = content.Load<Texture2D>(world.Attribute("worldTexture").Value);
                 width = int.Parse(world.Attribute("width").Value);
                 height = int.Parse(world.Attribute("height").Value);
                 tileSize = int.Parse(world.Attribute("tileSize").Value);
-                worldPrototypes[worldName] = new WorldConfig(worldName, texture, width, height, tileSize);
+                enemyClasses = new List<String>();
+                foreach (XElement enemy in enemies)
+                {
+                    enemyClasses.Add(enemy.Attribute("class").Value);
+                }
+                worldPrototypes[worldName] = new WorldConfig(worldName, enemyClasses, texture, width, height, tileSize);
+                worldPrototypes[worldName].music = world.Attribute("themeMusic").Value;
             }
         }
 
         public void initStartingWorld()
         {
             curLevel = 1;
-            curWorld = this.worldFactory.generateWorld(worldPrototypes["forest"], 5);
+            //curWorld = this.worldFactory.generateWorld(worldPrototypes["forest"], 5);
+            curWorld = loadTutorialLevel();
             Node<World> rootWorld = new Node<World>(curWorld);
             curWorldNode = rootWorld;
             //Node<World> newWorldNode = Node<World>(curWorld);
@@ -124,7 +140,7 @@ namespace DreamStateMachine
 
         public World createNextWorld(int worldIndex)
         {
-            World tempWorld = this.worldFactory.generateWorld(worldPrototypes["tundra"], 5);
+            World tempWorld = this.worldFactory.generateWorld(worldPrototypes["nightmare"], 5);
             Node<World> tempNode = new Node<World>(tempWorld);
             curWorldNode.Children.Insert(worldIndex, tempNode);
             curWorldNode = curWorldNode.Children[worldIndex];
@@ -137,6 +153,105 @@ namespace DreamStateMachine
             worldChange(this, EventArgs.Empty);
         }
 
+
+        //public World loadFromCustom(int[,] tileMap, bool[,] collisionMap)
+        //{
+        //    Point playerSpawnPos = new Point(1, 1);
+        //    return this.loadFromCustom(worldPrototypes["tundra"], tileMap, collisionMap, playerSpawnPos);
+        //}
+
+        //public World loadFromCustom(WorldConfig worldConfig, int[,] tileMap, bool[,] collisionMap, Point playerSpawnPos)
+        //{
+        //    return this.loadFromCustom(worldConfig.texture, worldConfig.tileSize, tileMap, collisionMap, playerSpawnPos);
+        //}
+
+        //public World loadFromCustom(Texture2D tile, int tileSize, int[,] tileMap, bool[,] collisionMap, Point playerSpawnPos)
+        //{
+        //    List<String> enemyTypeList = new List<String>();
+        //    List<Point> enemySpawnPosList = new List<Point>();
+        //    return this.loadFromCustom(tile, tileSize, tileMap, collisionMap, playerSpawnPos, enemyTypeList, enemySpawnPosList);
+        //}
+
+        public World loadFromCustom(WorldConfig worldConfig, int[,] tileMap, bool[,] collisionMap, Point playerSpawnPos, List<String> enemyTypeList, List<Point> enemySpawnPosList)
+        {
+            return this.loadFromCustom(worldConfig.texture, worldConfig.tileSize, tileMap, collisionMap, playerSpawnPos, enemyTypeList, enemySpawnPosList);
+        }
+
+        public World loadFromCustom(Texture2D tile, int tileSize, int[,] tileMap, bool[,] collisionMap, Point playerSpawnPos, List<String> enemyTypeList, List<Point> enemySpawnPosList)
+        {
+            World tempWorld = new World(tile, tileSize);
+            List<SpawnFlag> spawns = new List<SpawnFlag>();
+            SpawnFlag playerSpawn = new SpawnFlag("player", playerSpawnPos, 1);
+            tempWorld.setTileMap(tileMap, collisionMap);
+            spawns.Add(playerSpawn);
+            tempWorld.setSpawnTile(playerSpawnPos);
+            SpawnFlag enemySpawn;
+            if(enemyTypeList.Count == enemySpawnPosList.Count)
+            {
+                for(int i = 0; i < enemyTypeList.Count; i++)
+                {
+                    enemySpawn = new SpawnFlag(enemyTypeList.ElementAt(i), enemySpawnPosList.ElementAt(i), 2);
+                    spawns.Add(enemySpawn);
+                }
+            }
+            tempWorld.setSpawns(spawns);
+            return tempWorld;
+
+        }
+
+        public World loadTutorialLevel()
+        {
+            int[,] tileMap = {{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                              {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+                              {0, 0, 1, 2, 2, 2, 3, 0, 0, 0, 0, 1, 2, 2, 2, 2, 3, 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 3, 0, 0},
+                              {0, 0, 4, 5, 5, 5, 6, 0, 0, 0, 0, 4, 5, 5, 5, 5, 6, 0, 0, 0, 0, 4, 5, 5, 5, 5, 5, 6, 0, 0},
+                              {0, 0, 4, 5,15, 5, 6, 0, 0, 0, 0, 4, 5, 5, 5, 5, 6, 0, 0, 0, 0, 4, 5, 5, 5, 5, 5, 6, 0, 0},
+                              {0, 0, 4, 5, 5, 5, 6, 0, 0, 0, 0, 4, 5, 5, 5, 5,12, 2, 2, 2, 2,13, 5, 5, 5, 5, 5, 6, 0, 0},
+                              {0, 0, 7,11, 5,10, 9, 0, 0, 0, 0, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 0, 0},
+                              {0, 0, 0, 4, 5, 6, 0, 0, 0, 0, 0, 4, 5, 5, 5, 5,10, 8, 8, 8, 8,11, 5, 5, 5, 5, 5, 6, 0, 0},
+                              {0, 0, 0, 4, 5, 6, 0, 0, 0, 0, 0, 4, 5, 5, 5, 5, 6, 0, 0, 0, 0, 4, 5, 5, 5, 5, 5, 6, 0, 0},
+                              {0, 1, 2,13, 5,12, 2, 3, 0, 0, 0, 7,11, 5,10, 8, 9, 0, 0, 0, 0, 7, 8,11, 5,10, 8, 9, 0, 0},
+                              {0, 4, 5, 5, 5, 5, 5, 6, 0, 0, 0, 0, 4, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 4, 5, 6, 0, 0, 0, 0},
+                              {0, 4, 5, 5, 5, 5, 5, 6, 0, 0, 1, 2,13, 5,12, 2, 3, 0, 0, 0, 0, 0, 0, 4, 5, 6, 0, 0, 0, 0},
+                              {0, 4, 5, 5, 5, 5, 5, 6, 0, 0, 4, 5, 5, 5, 5, 5, 6, 0, 0, 0, 1, 2, 2,13, 5,12, 2, 3, 0, 0},
+                              {0, 4, 5, 5, 5, 5, 5, 6, 0, 0, 4, 5, 5, 5, 5, 5, 6, 0, 0, 0, 4, 5, 5, 5, 5, 5, 5, 6, 0, 0},
+                              {0, 4, 5, 5, 5, 5, 5, 6, 0, 0, 4, 5, 5, 5, 5, 5, 6, 0, 0, 0, 4, 5, 5, 5, 5, 5, 5, 6, 0, 0},
+                              {0, 7, 8,11, 5,10, 8, 9, 0, 0, 4, 5, 5, 5, 5, 5, 6, 0, 0, 0, 4, 5, 5, 5, 5, 5, 5, 6, 0, 0},
+                              {0, 0, 0, 4, 5, 6, 0, 0, 0, 0, 7, 8, 8, 8, 8, 8, 9, 0, 0, 0, 4, 5, 5, 5, 5, 5, 5, 6, 0, 0},
+                              {0, 0, 0, 4, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 8, 8,11, 5,10, 8, 9, 0, 0},
+                              {0, 0, 0, 4, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 5, 6, 0, 0, 0, 0},
+                              {0, 0, 0, 4, 5, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 5, 6, 0, 0, 0, 0},
+                              {0, 1, 2,13, 5,12, 3, 0, 0, 0, 1, 2, 2, 2, 2, 2, 3, 0, 0, 0, 0, 0, 0, 4, 5, 6, 0, 0, 0, 0},
+                              {0, 4, 5, 5, 5, 5, 6, 0, 0, 0, 4, 5, 5, 5, 5, 5, 6, 0, 0, 0, 1, 2, 2,13, 5,12, 3, 0, 0, 0},
+                              {0, 4, 5, 5, 5, 5, 6, 0, 0, 0, 4, 5, 5, 5, 5, 5, 6, 0, 0, 0, 4, 5, 5, 5, 5, 5, 6, 0, 0, 0},
+                              {0, 4, 5, 5, 5, 5,12, 2, 2, 2,13, 5, 5, 5, 5, 5,12, 2, 2, 2,13, 5, 5, 5, 5, 5, 6, 0, 0, 0},
+                              {0, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 0, 0, 0},
+                              {0, 4, 5, 5, 5, 5,10, 8, 8, 8,11, 5, 5, 5, 5, 5,10, 8, 8, 8,11, 5, 5, 5, 5, 5, 6, 0, 0, 0},
+                              {0, 4, 5, 5, 5, 5, 6, 0, 0, 0, 7, 8, 8, 8, 8, 8, 9, 0, 0, 0, 4, 5, 5, 5, 5, 5, 6, 0, 0, 0},
+                              {0, 7, 8, 8, 8, 8, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 5, 5, 5, 5, 5, 6, 0, 0, 0},
+                              {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 8, 8, 8, 8, 8, 9, 0, 0, 0},
+                              {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}};
+            bool[,] collisionMap = new bool[30,30];
+            for(int i = 0; i < 30; i++) {
+                for(int j = 0; j < 30; j++) {
+                    collisionMap[i, j] = ((tileMap[i, j] == 5) || (tileMap[i, j] == 15));
+                }
+            }
+            Point playerSpawnPos = new Point(15,14);
+            List<String> enemyTypeList = new List<String>();
+            enemyTypeList.Add("skeleton");
+            List<Point> enemySpawnPosList = new List<Point>();
+            enemySpawnPosList.Add(new Point(4, 13));
+            return this.loadFromCustom(worldPrototypes["forest"], tileMap, collisionMap, playerSpawnPos, enemyTypeList, enemySpawnPosList);
+        }
+
+        public void restart()
+        {
+            curLevel = -1;
+            curWorld = null;
+            curWorldNode = null;
+            worldChange(this, EventArgs.Empty);
+        }
     }
 
 }

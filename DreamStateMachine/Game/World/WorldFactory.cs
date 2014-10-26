@@ -269,10 +269,12 @@ namespace DreamStateMachine
         //Returns an array of enumerated tiles.
         public World generateWorld(WorldConfig worldConfig, int numEnemies)
         {
-            return generateWorld(worldConfig.texture, worldConfig.width, worldConfig.height, worldConfig.tileSize, numEnemies);
+            World world = generateWorld(worldConfig.texture, worldConfig.enemyClasses, worldConfig.width, worldConfig.height, worldConfig.tileSize, numEnemies);
+            world.themeMusic = worldConfig.music;
+            return world;
         }
 
-        public World generateWorld(Texture2D floorTex, int width, int height, int tileSize, int numEnemies)
+        public World generateWorld(Texture2D floorTex, List<String> enemyClasses, int width, int height, int tileSize, int numEnemies)
         {
             rooms = new List<Room>();
             spawns = new List<SpawnFlag>();
@@ -352,12 +354,14 @@ namespace DreamStateMachine
             }
 
             Room room;
+            String enemyClass;
             for (int i = 0; i < rooms.Count; i++)
             {
                 room = rooms.ElementAt(i);
                 if (i != 0)
                 {
-                    placeEnemy(collisionMap, room, spawns);
+                    enemyClass = enemyClasses[random.Next(0,enemyClasses.Count)];
+                    placeEnemy(collisionMap, room, spawns, enemyClass);
                 }
                 if (i == rooms.Count - 1)
                 {
@@ -372,7 +376,7 @@ namespace DreamStateMachine
         }
 
 
-        public void placeEnemy(bool[,] cMap, Room room, List<SpawnFlag> spawns)
+        public void placeEnemy(bool[,] cMap, Room room, List<SpawnFlag> spawns, String enemyType)
         {
             Rectangle dimensions = room.dimensions;
             Point coors;
@@ -391,7 +395,7 @@ namespace DreamStateMachine
                 }
             }
 
-            SpawnFlag spawnFlag = new SpawnFlag("skeleton", coors, 2);
+            SpawnFlag spawnFlag = new SpawnFlag(enemyType, coors, 2);
             spawns.Add(spawnFlag);
         }
 
